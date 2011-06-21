@@ -1,5 +1,4 @@
 <?php
-// modifed by torleif 2009/01/05 - added a order module to payment system. Ensures that items bought get added somewere.
 /**
  * Step-by-Step:
  * 1. Send XML transaction request (GenerateRequest) to PaymentExpress
@@ -13,20 +12,13 @@
  * @see http://www.paymentexpress.com/technical_resources/ecommerce_hosted/pxpay.html
  * @package payment_dpshosted
  * 
- * Testing details
- * 
- * Use an amount ending in .76 to generate a declined transaction.
- * 
- * Credit Cards: 4111111111111111 - visa
- *				 5431111111111111 - mastercard
- *				 371111111111114  - amex
-				 4444555566669999 - invalid card type
-				 4999999999999202 - declined, with retry = 1
+ * Note that this class relies on the PxPay, PxPayRequest, and MifMessage classes found in payment/DPSPayment/dps_hosted_helper/
+ * If the payment module ever removes it's existing payment types, then that code will need to be included in this payment type, or a separate module.
  * 
  */
 class DPSHostedPayment extends Payment{
 	
-	static $pxAccess_Url = "https://www.paymentexpress.com/pxpay/pxpay.aspx";
+	static $pxAccess_Url = "https://sec.paymentexpress.com/pxpay/pxpay.aspx";
 	
 	private static $pxAccess_Userid;
 	
@@ -34,7 +26,7 @@ class DPSHostedPayment extends Payment{
 	
 	private static $mac_Key;
 	
-	static $pxPay_Url  = "https://www.paymentexpress.com/pxpay/pxaccess.aspx";
+	static $pxPay_Url  = "https://sec.paymentexpress.com/pxpay/pxaccess.aspx";
   	
 	private static $pxPay_Userid;
   	
@@ -46,6 +38,8 @@ class DPSHostedPayment extends Payment{
 	 * @var string $px_merchantreference Reference field to appear on transaction reports
 	 */
 	public static $px_merchantreference = null;
+	
+	protected static $use_iframe = false;
 	
 	static $db = array(
 		'TxnRef' => 'Varchar', // only written on success
@@ -102,6 +96,10 @@ class DPSHostedPayment extends Payment{
 	static function get_px_pay_key(){
 		return self::$pxPay_Key;
 	}
+	
+	static function set_use_iframe($use = true){
+		self::$use_iframe = $use;
+	}
 		
 	static function generate_txn_id() {
 		do {
@@ -143,13 +141,14 @@ class DPSHostedPayment extends Payment{
 			$this->write();
 		}
 		
-		//provide iframe with payment gateway form in it
-		//TODO: make this custom // move elsewhere
-		return new Payment_Processing(array(
-			'DeliveryMenuStatus' => 'done',
-			'PaymentMenuStatus' => 'current',
-			'PaymentIFrame' => "<iframe src =\"$url\" width=\"100%\" height=\"380\" frameborder=\"0\" name=\"payframe\"><a href=\"$url\">click here to pay</a></iframe>"
-		));
+		//provide iframe with payment gateway form in it	
+		if(self::$use_iframe){
+			return new Payment_Processing(array(
+				'Content' => "<iframe src =\"$url\" width=\"100%\" height=\"380\" frameborder=\"0\" name=\"payframe\"><a href=\"$url\">"._t('DPSHostedPayment.CLICKHERE',"click here to pay")."</a></iframe>"
+			));
+		}
+		Director::redirect($url);
+		return new Payment_Processing();
 	}
 	
 	/**
@@ -165,7 +164,7 @@ class DPSHostedPayment extends Payment{
 		$request = new PxPayRequest();
 		
 		// Set in payment_dpshosted/_config.php
-		$postProcess_url = Director::absoluteBaseURL() ."DPSHostedPayment/processResponse";
+		$postProcess_url = Director::absoluteBaseURL() .DPSHostedPayment_Controller::$URLSegment."/processResponse";
 		$request->setUrlFail($postProcess_url);
 		$request->setUrlSuccess($postProcess_url);
 		
@@ -206,73 +205,14 @@ class DPSHostedPayment extends Payment{
 			$request->setEmailAddress($data['Email']); // optional
 		}
 		
-		
 		return $request;
 	}
-	
-	/**
-	 * Set the IP address and Proxy IP (if available) from the site visitor.
-	 * Does an ok job of proxy detection. Probably can't be too much better because anonymous proxies
-	 * will make themselves invisible.
-	 */	
-	function setClientIP() {
-		if(isset($_SERVER['HTTP_CLIENT_IP'])) $ip = $_SERVER['HTTP_CLIENT_IP'];
-		else if(isset($_SERVER['REMOTE_ADDR'])) $ip = $_SERVER['REMOTE_ADDR'];
-		else $ip = null;
-		
-		if(isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-			$proxy = $ip;
-			$ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-		}
-		
-		// If the IP and/or Proxy IP have already been set, we want to be sure we don't set it again.
-		if(!$this->IP) $this->IP = $ip;
-		if(!$this->ProxyIP && isset($proxy)) $this->ProxyIP = $proxy;
-	}
-	
-	/**
-	 * DQL EDIT
-	 * @return 
-	 */
-   function getCMSFields_forPopup() {
-      $fields = new FieldSet();
-			
-			// grab the order with this payments id
-			//$OrderInfo = DataObject::get('Order', "ID = {$this->ID}")->First();
-			
-     // $fields->push( new TextField( 'FirstName', 'First Name', $OrderInfo->ShippingName) );
-		 
-			$orderForRender = new DataObject();
-			$orderForRender->Order = DataObject::get_one('Order', "ID = {$this->ID}");
-			$orderForRender->Payment = $this;
-				
-      $ordersRendered = $orderForRender->renderWith('OrdersCMS');
-      $fields->push(new LiteralField("OrderFeild", $ordersRendered));
-			
-      return $fields;
-   }
-	 /**
-	  * DQL EDIT
-	  * @return 
-	  */
-	public function CompleteLink() {
-		if($this->Status == 'SuccessSent') {
-			return  "<a href=\"#\" onClick=\"new Ajax.Request('/Orders/setUnBoughtOrder?OrderID=".$this->ID."',	{method: 'get',	onFailure: function(response) {".
-								"alert('There was an error updating your order information. Please try again.');	},onComplete: function(response) {		alert(response.responseText);}		} );
-	                             this.parentNode.parentNode.style.textDecoration = 'line-through'\">Mark as not complete</a>";
-		}
-		return  "<a href=\"#\" style=\"font-size:18px\" onClick=\"new Ajax.Request('/Orders/setBoughtOrder?OrderID=".$this->ID."',	{method: 'get',	onFailure: function(response) {".
-							"alert('There was an error updating your order information. Please try again.');	},onComplete: function(response) {		alert(response.responseText);}		} );
-                             this.parentNode.parentNode.style.textDecoration = 'line-through'\">Mark as complete</a>";
-	}
-	
-	public function PaymentType() {
-		if(!$this->MyOrderID || $this->MyOrderID == 0) return 'Invalid Order ID';
-		return DataObject::get_by_id('Order', $this->MyOrderID)->PaymentMethod;
-	}
+
 }
 
 class DPSHostedPayment_Controller extends Controller {
+	
+	static $URLSegment = 'paymentexpressctl';
 	
 	/**
 	 * React to DSP response triggered by {@link processPayment()}.
@@ -325,23 +265,11 @@ class DPSHostedPayment_Controller extends Controller {
 			}
 			$payment->write();
 			
-
 			//TODO: this needs to be generalised in Payment??
 			$redirectURL = ($payment->PaidObject() && $payment->PaidObject()->Link()) ? $payment->PaidObject()->Link() : 'home';
 			
-			//javascript redirect, or provide link to click		
-			//redirect to recirectURL. _top is used to be sure main frame redirects, and not iframe.
-			Requirements::javascript(THIRDPARTY_DIR.'/jquery/jquery.js');
-			$script = <<<JS
-				$('#RedirectLink').hide();
-				window.open("$redirectURL", '_top','',false);	
-JS;
-			
-			Requirements::customScript($script);
-			
-			return array(
-				'RedirectLink' => $redirectURL
-			);
+			Director::redirect($redirectURL);
+			return null;
 		}
 	}
 }
