@@ -1,5 +1,5 @@
 <?php
 
 Director::addRules(50, array(
-	DPSHostedPayment_Controller::$URLSegment . '/$Action/$ID/$OtherID' => 'DPSHostedPayment_Controller'
+	PaymentExpressHostedPayment_Controller::$URLSegment . '/$Action/$ID/$OtherID' => 'PaymentExpressHostedPayment_Controller'
 ));
