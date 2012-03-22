@@ -1,5 +1,7 @@
 <?php
 /**
+ * Payment Express Hosted Payment
+ * 
  * Step-by-Step:
  * 1. Send XML transaction request (GenerateRequest) to PaymentExpress
  *    => DPSHostedPaymentForm->doPay() => DPSHostedPayment->prepareRequest() => DPSHostedPayment->processPayment()
@@ -29,15 +31,6 @@ class PaymentExpressHostedPayment extends Payment{
 
 	protected static $use_iframe = false;
 	
-	private static $pxAccess_Userid;
-	private static $pxAccess_Key;
-	private static $mac_Key;
-	private static $pxPay_Userid;
-	private static $pxPay_Key;
-	private static $protocol = 'curl'; //or openssl
-
-	private static $pxpay;
-	
 	static $db = array(
 		'TxnRef' => 'Varchar', // only written on success
 		'AuthorizationCode' => 'Varchar', // only written on success
@@ -45,62 +38,18 @@ class PaymentExpressHostedPayment extends Payment{
 	);
 	
 	static $has_one = array();
+		
+	private static $pxPay_Userid;
+	private static $pxPay_Key;
+	private static $mac_Key;
+	private static $protocol = 'curl'; //or openssl
+	private static $pxpay;
 	
-	function getPaymentFormFields(){
-		return new FieldSet();
-	}
-	
-	function getPaymentFormRequirements(){
-		return array();
-	}
-	
-	static function set_px_access_userid($id){
-		self::$pxAccess_Userid = $id;
-	}
-	
-	static function get_px_access_userid(){
-		return self::$pxAccess_Userid;
-	}
-	
-	static function set_px_access_key($key){
-		self::$pxAccess_Key = $key;
-	}
-	
-	static function get_px_access_key(){
-		return self::$pxAccess_Key;
-	}
-	
-	static function set_mac_key($key){
-		self::$mac_Key = $key;
-	}
-	
-	static function get_mac_key(){
-		return self::$mac_Key;
-	}
-	
-	static function set_px_pay_userid($id){
-		self::$pxPay_Userid = $id;
-	}
-	
-	static function get_px_pay_userid(){
-		return self::$pxPay_Userid;
-	}
-	
-	static function set_px_pay_key($key){
-		self::$pxPay_Key = $key;
-	}
-	
-	static function get_px_pay_key(){
-		return self::$pxPay_Key;
-	}
-	
-	static function set_protocol($protocol = "openssl"){
-		self::$protocol = $protocol;
-	}
-	
-	static function set_use_iframe($use = true){
-		self::$use_iframe = $use;
-	}
+	static function set_px_pay_userid($id){ self::$pxPay_Userid = $id; }
+	static function set_px_pay_key($key){ self::$pxPay_Key = $key; }
+	static function set_mac_key($key){ self::$mac_Key = $key; }
+	static function set_protocol($protocol = "openssl"){ self::$protocol = $protocol; }
+	static function set_use_iframe($use = true){ self::$use_iframe = $use; }
 		
 	static function generate_txn_id() {
 		do {
@@ -121,26 +70,32 @@ class PaymentExpressHostedPayment extends Payment{
 		return self::$pxpay;
 	}
 	
+	function getPaymentFormFields(){
+		return new FieldSet();
+	}
+	
+	function getPaymentFormRequirements(){
+		return array();
+	}
+	
 	/**
 	 * Executed in form submission *before* anything
 	 * goes out to PaymentExpress.
 	 */
 	public function processPayment($data, $form){
-		// generate a unique transaction ID
-		$this->TxnID = self::generate_txn_id();
+		
+		if(!self::$pxPay_Userid || !self::$pxPay_Key){
+			$this->Status = 'Failure';
+			$this->Message = "Config problem";
+			$this->write();
+			return new Payment_Failure();
+		}
+		$this->TxnID = self::generate_txn_id(); // generate a unique transaction ID
 		$this->write();
-		
-		// generate request from thirdparty pxpayment classes
-		$request = $this->prepareRequest($data);
-		
-		// decorate request (if necessary)
-		$this->extend('prepareRequest', $request);
-		
-		// set currency
-		$this->Amount->Currency = $request->getCurrencyInput();
-		
-		// submit payment request to get the URL for redirection
-		$pxpay = self::createPxPay();
+		$request = $this->prepareRequest($data); // generate request from thirdparty pxpayment classes
+		$this->extend('prepareRequest', $request); // decorate request (if necessary)
+		$this->Amount->Currency = $request->getCurrencyInput(); // set currency
+		$pxpay = self::createPxPay(); // submit payment request to get the URL for redirection
 		$request_string = $pxpay->makeRequest($request);
 
 		$response = new MifMessage($request_string);
@@ -151,6 +106,11 @@ class PaymentExpressHostedPayment extends Payment{
 		if($valid) {
 			$this->Status = 'Pending';
 			$this->write();
+		}else{
+			$this->Status = 'Failure';
+			$this->Message = $url;
+			$this->write();
+			return new Payment_Failure();
 		}
 		
 		//provide iframe with payment gateway form in it	

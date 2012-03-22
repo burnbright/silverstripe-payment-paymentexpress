@@ -1,4 +1,6 @@
-Payment Express (DPS) - PxPay hosted payment type
+# Payment Express (DPS)
+
+PxPay hosted payment type.
 
 More information about pxpay can be found here:
 http://www.paymentexpress.com/technical_resources/ecommerce_hosted/pxpay.html
@@ -29,12 +31,12 @@ Testing details
 Use an amount ending in .76 to generate a declined transaction.
   
 Test Credit Cards:
-4111111111111111 - visa
-5431111111111111 - mastercard
-371111111111114  - amex
-4444555566669999 - invalid card type
-4999999999999202 - declined, with retry = 1
 
+	4111111111111111 - visa
+	5431111111111111 - mastercard
+	371111111111114  - amex
+	4444555566669999 - invalid card type
+	4999999999999202 - declined, with retry = 1
 
 ## Upgrading
 
