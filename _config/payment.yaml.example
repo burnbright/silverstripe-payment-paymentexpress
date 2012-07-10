@@ -1,0 +1,10 @@
+name: paymentmethods
+---
+
+PaymentProcessor:
+  supported_methods:
+    - 'PaymentExpressPxPay'
+
+PaymentExpressPxPayGateway:
+    userid: USERIDHERE
+    key: KEYHERE

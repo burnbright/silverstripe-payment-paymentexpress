@@ -1,33 +1,30 @@
 # Payment Express (DPS)
 
-PxPay hosted payment type.
+Payment Express PxPay hosted payment method.
 
 More information about pxpay can be found here:
 http://www.paymentexpress.com/technical_resources/ecommerce_hosted/pxpay.html
 
-Setup
------
+## Setup
 
-Add 'PaymentExpressHostedPayment' to your supported payment types in your _config file, eg:
+Add 'PaymentExpressPxPay' to your supported payment types in your
+mysite/_config/payment.yaml file:
 
-	Payment::set_supported_methods(array(
-		'PaymentExpressHostedPayment' => 'Credit Card (via Payment Express)'
-	));
+	PaymentProcessor:
+	  supported_methods:
+	    - 'PaymentExpressPxPay'
 
-Set your payment express user id and pay key with the following lines:
+Also set your payment express user id and pay key by adding them to your 
+mysite/_config/payment.yaml file:
 
-	PaymentExpressHostedPayment::set_px_pay_userid('UserID');
-	PaymentExpressHostedPayment::set_px_pay_key('b032h3lsl0a340hgla39ag9a3hl2gol939gagao4ga3w4ga3l4l');
-	
-Note: it would be wise to start by using a test account initially.
+	PaymentExpressPxPayGateway:
+	    userid: UserID
+	    key: b032h3lsl0a340hgla39ag9a3hl2gol939gagao4ga3w4ga3l4lwfweg
 
-You can use either cURL (default) or OpenSSL as the protocol for talking to PaymentExpress servers.
-To set OpenSSL as the protocol, add the following to your _config:
+For an example, see _config/payment.yaml.example	
 
-	PaymentExpressHostedPayment::set_protocol('OpenSSL');
+## Testing details
 
-Testing details
----------------  
 Use an amount ending in .76 to generate a declined transaction.
   
 Test Credit Cards:
@@ -37,7 +34,3 @@ Test Credit Cards:
 	371111111111114  - amex
 	4444555566669999 - invalid card type
 	4999999999999202 - declined, with retry = 1
-
-## Upgrading
-
-You may need to rename your DPSHostedPayment table to PaymentExpressHostedPayment.

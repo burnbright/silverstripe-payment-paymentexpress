@@ -1,0 +1,17 @@
+name: paymentexpress
+---
+PaymentFactory:
+    PaymentExpressPxPay:
+        title: 'Payment Express'
+        model: 'PaymentExpressPxPay'
+        gateway_classes:
+            live: 'PaymentExpressPxPayGateway'
+            dev: 'PaymentExpressPxPayGateway'
+        controller: 'PaymentProcessor_GatewayHosted'
+
+PaymentExpressPxPayGateway:
+    url: https://sec.paymentexpress.com/pxpay/pxaccess.aspx
+    #userid: #populated by user
+    #key:    #populated by user
+    #url: https://sec.paymentexpress.com/pxpay/pxpay.aspx #https://sec.paymentexpress.com/pxpay/pxpay.aspx
+    protocol: curl
