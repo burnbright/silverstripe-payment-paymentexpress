@@ -56,6 +56,10 @@ class PaymentExpressPxPayGateway extends PaymentGateway{
 		return $rand;
 	}
 	
+	public function getSupportedCurrencies() {
+		return array('USD','NZD','AUD');
+	}
+	
 	/**
 	 * Creates the library class for interfacing with PaymentExpress web API.
 	 */
