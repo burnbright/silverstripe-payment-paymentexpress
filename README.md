@@ -34,3 +34,5 @@ Test Credit Cards:
 	371111111111114  - amex
 	4444555566669999 - invalid card type
 	4999999999999202 - declined, with retry = 1
+
+More details here: http://www.paymentexpress.com/Knowledge_Base/Frequently_Asked_Questions/Developer_FAQs#Testing%20Details
