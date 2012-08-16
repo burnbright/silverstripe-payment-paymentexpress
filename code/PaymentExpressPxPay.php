@@ -30,7 +30,7 @@ class PaymentExpressPxPay extends Payment{
 /**
  * External gateway hosted payments
  */
-class PaymentExpressPxPayGateway extends PaymentGateway{
+class PaymentExpressPxPayGateway extends PaymentGateway_GatewayHosted{
 
 	public static $px_currency = 'NZD'; //TODO: use payment module std approach
 	public static $px_merchantreference = null;
@@ -40,10 +40,12 @@ class PaymentExpressPxPayGateway extends PaymentGateway{
 	protected $userid,$key,$url,$protocol;
 	
 	function __construct(){
+		//get conf for environment
+		$config =  Config::inst()->get('PaymentExpressPxPayGateway', self::get_environment());
 		//set configs
-		$this->userid = Config::inst()->get(get_class($this), 'userid');
-		$this->key = Config::inst()->get(get_class($this), 'key');
-		$this->protocol = Config::inst()->get(get_class($this), 'protocol');
+		$this->userid = isset($config['userid']) ? $config['userid'] : null;
+		$this->key = isset($config['key']) ? $config['key'] : null;
+		$this->protocol = isset($config['protocol']) ? $config['protocol'] : null;
 		//$this->url = Config::inst()->get(get_class($this), 'url'); //not working
 		$this->url = "https://sec.paymentexpress.com/pxpay/pxaccess.aspx";
 	}
@@ -87,9 +89,9 @@ class PaymentExpressPxPayGateway extends PaymentGateway{
 		// set status to pending
 		if($valid) {
 			Controller::curr()->redirect($url);
-			return new PaymentGateway_Result(PaymentGateway_Result::INCOMPLETE);
+			return new PaymentGateway_Success(); //TODO: this should be Incomplete, but need to update paymentprocessor if so
 		}
-		return new PaymentGateway_Result(PaymentGateway_Result::FAILURE);
+		return new PaymentGateway_Failure();
 	}
 	
 	/**
@@ -129,13 +131,10 @@ class PaymentExpressPxPayGateway extends PaymentGateway{
 		else{
 			$ref = Director::absoluteBaseURL();
 		}
-
-		$request->setMerchantReference($ref); // mandatory			
-		
+		$request->setMerchantReference($ref); // mandatory
 		if(isset($data['Email'])) {
 			$request->setEmailAddress($data['Email']); // optional
 		}
-		
 		return $request;
 	}
 	
@@ -145,10 +144,9 @@ class PaymentExpressPxPayGateway extends PaymentGateway{
 		if($success =='1'){
 			//$payment->TxnRef=$rsp->getDpsTxnRef(); //TODO: how to store these?
 			//$payment->AuthorizationCode=$rsp->getAuthCode();
-			return new PaymentGateway_Result(PaymentGateway_Result::SUCCESS);
+			return new PaymentGateway_Success(null,$rsp->getResponseText());
 		}
-		//$message = $rsp->getResponseText();//get message
-		return new PaymentGateway_Result(PaymentGateway_Result::FAILURE);
+		return new PaymentGateway_Failure(null,$rsp->getResponseText());
 	}
 
 }
