@@ -7,6 +7,7 @@ PaymentFactory:
         gateway_classes:
             live: 'PaymentExpressPxPayGateway'
             dev: 'PaymentExpressPxPayGateway'
+            test: 'PaymentExpressPxPayGateway'
         controller: 'PaymentProcessor_GatewayHosted'
 
 PaymentExpressPxPayGateway:
