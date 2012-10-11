@@ -8,7 +8,7 @@ PaymentFactory:
             live: 'PaymentExpressPxPayGateway'
             dev: 'PaymentExpressPxPayGateway'
             test: 'PaymentExpressPxPayGateway'
-        controller: 'PaymentProcessor_GatewayHosted'
+        processor: 'PaymentProcessor_GatewayHosted'
 
 PaymentExpressPxPayGateway:
     url: https://sec.paymentexpress.com/pxpay/pxaccess.aspx
